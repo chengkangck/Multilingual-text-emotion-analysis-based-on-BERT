@@ -76,6 +76,124 @@ Aidan N Gomez, L-  ukasz Kaiser, and Illia Polosukhin. Attention is all you need
 In I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach,  R. Fergus,  S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information Processing Systems 30, pages 5998–6008. Curran Associates, Inc., 2017.
 
 
+## Experiment environment
 
+centos 7.4
+python 3.6.7
+configparser 3.7.4
+numpy 1.15.4
+tqdm 4.32.1
+scikit-learn 0.20.2
+torch 1.1.0
+torchvision 0.3.0
+tensorboradX 1.7
+pytorch-pretrained-bert 0.6.2
+pyltp 0.2.1
+cuda 9.0.176
+cudnn 7.3.0
 
+## Experimental parameters
 
+#! /usr/bin/env bash
+python sentiment_dev.py \
+--data_dir '../input' \
+--bert_model_dir '../input/pre_training_models/chinese_L-12_H-768_A-12' \
+--output_dir '../output/models/' \
+--checkpoint '../output/models/checkpoint-33426' \
+--max_seq_length 300 \
+--do_predict \
+--do_lower_case \
+--train_batch_size 60 \
+--gradient_accumulation_steps 3 \
+--predict_batch_size 15 \
+--learning_rate 2e-5 \
+--num_train_epochs 3
+
+## Experimental results
+Among them, data_dir is the directory where the training set, validation set, and test set are located. bert_model_dir is the directory where the Bert Chinese pre-training model is located. output_dir is the directory where the training model is saved and the prediction result output directory. A checkpoint is the model load file, which is used to predict or Specify the checkpoint to start training to save training time. If you want to restart training, remove the checkpoint parameter. max_seq_len is the maximum length of the input sequence because the longest sentence length in the data set is 293, so set it to 300 here to ensure that all inputs can be retained The complete information of the text. do_predict means prediction. If this parameter is changed to do_train, it means training. do_lower_case means to ignore case, and English letters are converted to lower case. train_batch_size is the number of samples sent to training at one time. gradient_accumulation_steps is the number of gradient accumulations, every gradient_accumulation_steps After gradient calculation and backpropagation, the learning rate is changed once, and the gradient is zeroed. The actual number of samples sent to training each time is train_batch_size/gradient_accumulation_steps samples. predict_batch_size is the number of samples for one prediction. learning_rate is the learning rate, and num_train_epoches is the training The number of training rounds on the set.
+
+Figure 2 below is a screenshot of the result submitted on Kaggle. The result circled in the red box is the best result submitted. This is the result of training 3 rounds on the training set, and test.predict-33426 is on the training set. The result of 2 rounds of semi-premature termination of the upper training, submission_2epoch is the result of 2 rounds of training on the training set. You can see that the longer the training, the higher the final private score, indicating that the training level is not sufficiently saturated, and there are still some features that have not been learned. A deeper training is needed. But the training time is too long and there is no time to do more rounds of training for comparison. The baseline_nb is the result obtained using the baseline model mentioned in Chapter 3, which is far from the result obtained by Bert, Bert The F1 score of the predicted result is almost 10 times that of the baseline. The best score submitted before the final list is 0.18777, ranking 12 on the list.
+![image](https://github.com/chengkangck/Multilingual-text-emotion-analysis-based-on-BERT/blob/main/images/Fig%202%20%20submission%20results%20of%20experiment%20on%20kaggle.png)
+
+## Source code introduction
+
+1. data preprocessing
+
+preprocess.py: preprocess the training data, split the verification machine and then shuffle the order
+
+2. baseline
+
+baseline.py: Use pyltp to segment words, and then use Naive Bayes for classification
+
+3. Main program
+
+sentiment_beta.py: Does not adjust the loss weight according to the proportion of each type of data, and does not add the validation set to filter and store the model
+
+sentiment.py: Adjust the loss weight according to the proportion of each type of data, and filter the stored model without the verification set
+
+sentiment_dev.py: adjust the loss weight according to the proportion of each type of data, and add the validation set to filter the stored model
+
+4. Running script
+
+run_sentiment.sh: The specific parameters will be explained below
+
+## Experiment running
+Bert prediction
+
+The experimental parameter configuration is written in the run_sentiment.sh script in the src directory, and the content is as follows:
+
+#! /usr/bin/env bash
+python sentiment.py \
+  --data_dir '../input' \
+  --bert_model_dir '../input/pre_training_models/chinese_L-12_H-768_A-12' \
+  --output_dir '../output/models/' \
+  --max_seq_length 300 \
+  --do_predict \
+  --do_lower_case \
+  --train_batch_size 60 \
+  --gradient_accumulation_steps 3 \
+  --predict_batch_size 15 \
+  --learning_rate 2e-5 \
+  --num_train_epochs 3 \
+  --checkpoint '../output/models/checkpoint-33426'
+
+The above is the script content for running the prediction model. Enter the src directory under the command line and execute the following command to start prediction
+
+bash run_sentiment.sh
+
+The prediction result file is saved in the corresponding directory of the script configuration item output_dir: test.predict-*****
+
+Bert training
+
+During training, you need to comment out the checkpoint configuration item in the run_sentiment.sh file, and change do_predict to do_train. After the modification, the corresponding content is as follows:
+
+#! /usr/bin/env bash
+python sentiment.py \
+  --data_dir '../input' \
+  --bert_model_dir '../input/pre_training_models/chinese_L-12_H-768_A-12' \
+  --output_dir '../output/models/' \
+  --max_seq_length 300 \
+  --do_train \
+  --do_lower_case \
+  --train_batch_size 60 \
+  --gradient_accumulation_steps 3 \
+  --predict_batch_size 15 \
+  --learning_rate 2e-5 \
+  --num_train_epochs 3
+  #--checkpoint '../output/models/checkpoint-33426' \
+  
+Then enter the command line into the src directory and execute the following commands to start training from scratch. If you want to continue training from a checkpoint, you need to specify the checkpoint configuration item in the script.
+
+bash run_sentiment.sh
+
+During the training process, the 5 models with the highest F1 score on the validation set will be saved in the corresponding directory of the script configuration item output_dir: checkpoint-*****
+
+The training and prediction process can be run on cpu or gpu. If there is a gpu, the program will automatically identify the gpu and divide the data in parallel to the gpu with device_id 0 and 1, so make sure that the machine with gpu has at least dual cores In order to ensure the normal operation of the program.
+
+baseline
+
+The baseline uses pyltp for word segmentation and part-of-speech tagging, so to run, you need to download the ltp_model_v3.4.0 model to the input directory (it’s a bit big, I didn’t upload it), and then the command line enters the src directory and executes the following commands
+
+python baseline.py
+
+The prediction results are written in baseline.csv in the output directory
