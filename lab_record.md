@@ -93,5 +93,5 @@ ok	4594
   - [ ] BCEWithLogitsLoss + 500_dev_set    
   - [x] BCEWithLogitsLoss + 1000_dev_set    ==sentiment1.py==
 
-## 提交方式
-  提交CL: kaggle competitions submit -c mining-challenge-for-nju-introdm-2019 -f submission.csv -m "Message"
+## submission
+  submission CL: kaggle competitions submit -c mining-challenge-for-nju-introdm-2019 -f submission.csv -m "Message"
