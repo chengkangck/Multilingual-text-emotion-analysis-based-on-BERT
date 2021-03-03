@@ -11,28 +11,24 @@ with open(os.path.join(config['path']['INPUT_PATH'], 'emoji.data'), 'r') as ef:
         items = line.strip().split('\t')
         emoj[items[1]] = items[0]
 
-dataset = []
-for key in emoj.keys():
-    dataset.append([])
+dataset = [[] for _ in emoj]
 labels = []
 with open(os.path.join(config['path']['INPUT_PATH'], 'train.solution'), 'r') as ts:
     for line in ts:
         labels.append(line.strip()[1:-1])
 with open(os.path.join(config['path']['INPUT_PATH'], 'train.data'), 'r') as td:
-    cnt = 0
-    for line in td:
+    for cnt, line in enumerate(td):
         dataset[int(emoj[labels[cnt]])].append([line.strip(), emoj[labels[cnt]]])
-        cnt += 1
 
 dev_content = []
-for i in range(len(dataset)):
-    random.shuffle(dataset[i])
-    dev_content += dataset[i][:5]
+for item_ in dataset:
+    random.shuffle(item_)
+    dev_content += item_[:5]
 random.shuffle(dev_content)
 
 senti_train = []
-for i in range(len(dataset)):
-    senti_train += dataset[i][5:]
+for item__ in dataset:
+    senti_train += item__[5:]
 random.shuffle(senti_train)
 with open(os.path.join(config['path']['INPUT_PATH'], 'sentiment.train'), 'w') as st:
     for item in senti_train:
